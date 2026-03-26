@@ -1,0 +1,35 @@
+name: NewsFeed
+options:
+  bundleIdPrefix: com.yourname
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "15.0"
+
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: "2.0.0"
+  FeedKit:
+    url: https://github.com/nmdias/FeedKit
+    from: "9.1.2"
+
+targets:
+  NewsFeed:
+    type: application
+    platform: iOS
+    sources:
+      - NewsFeed
+    settings:
+      base:
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+        SWIFT_EMIT_LOC_STRINGS: YES
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.newsfeed
+    dependencies:
+      - package: Supabase
+        product: Supabase
+      - package: FeedKit
