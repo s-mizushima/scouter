@@ -37,6 +37,7 @@ struct Article: Codable, Identifiable {
 struct ArticleWithFeed: Identifiable {
     let article: Article
     let feedName: String
+    let needsTranslation: Bool
 
     var id: UUID { article.id }
 }

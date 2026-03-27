@@ -14,6 +14,7 @@ struct FeedSettingsView: View {
                         .textContentType(.URL)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
+                    Toggle("翻訳する", isOn: $viewModel.newFeedTranslate)
                     Button("追加") {
                         Task { await viewModel.addFeed() }
                     }
@@ -26,26 +27,37 @@ struct FeedSettingsView: View {
                         ProgressView()
                     } else {
                         ForEach(viewModel.feeds) { feed in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(feed.name)
-                                        .font(.body)
-                                    Text(feed.url)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(feed.name)
+                                            .font(.body)
+                                        Text(feed.url)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
+
+                                    Spacer()
+
+                                    Toggle("", isOn: Binding(
+                                        get: { feed.isEnabled },
+                                        set: { _ in
+                                            Task { await viewModel.toggleFeed(feed) }
+                                        }
+                                    ))
+                                    .labelsHidden()
                                 }
 
-                                Spacer()
-
-                                Toggle("", isOn: Binding(
-                                    get: { feed.isEnabled },
+                                Toggle("翻訳する", isOn: Binding(
+                                    get: { feed.needsTranslation },
                                     set: { _ in
-                                        Task { await viewModel.toggleFeed(feed) }
+                                        Task { await viewModel.toggleTranslation(feed) }
                                     }
                                 ))
-                                .labelsHidden()
+                                .font(.caption)
                             }
+                            .padding(.vertical, 2)
                         }
                         .onDelete { indexSet in
                             for index in indexSet {

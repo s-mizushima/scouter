@@ -7,6 +7,7 @@ final class ArticleListViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var selectedDate: Date = Date()
     @Published var errorMessage: String?
+    @Published var clippedArticleIds: Set<UUID> = []
 
     private var feeds: [Feed] = []
 
@@ -62,11 +63,13 @@ final class ArticleListViewModel: ObservableObject {
                 enabledFeedIds: enabledFeedIds
             )
 
-            let feedNameMap = Dictionary(uniqueKeysWithValues: feeds.map { ($0.id, $0.name) })
+            let feedMap = Dictionary(uniqueKeysWithValues: feeds.map { ($0.id, $0) })
             articles = fetchedArticles.map { article in
-                ArticleWithFeed(
+                let feed = feedMap[article.feedId]
+                return ArticleWithFeed(
                     article: article,
-                    feedName: feedNameMap[article.feedId] ?? "Unknown"
+                    feedName: feed?.name ?? "Unknown",
+                    needsTranslation: feed?.needsTranslation ?? true
                 )
             }
         } catch {
@@ -74,5 +77,28 @@ final class ArticleListViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    func loadClipIds() async {
+        do {
+            clippedArticleIds = try await SupabaseService.shared.fetchClippedArticleIds()
+        } catch {
+            print("Failed to load clips: \(error)")
+        }
+    }
+
+    func toggleClip(articleId: UUID) async {
+        let isClipped = clippedArticleIds.contains(articleId)
+        do {
+            if isClipped {
+                try await SupabaseService.shared.removeClip(articleId: articleId)
+                clippedArticleIds.remove(articleId)
+            } else {
+                try await SupabaseService.shared.addClip(articleId: articleId)
+                clippedArticleIds.insert(articleId)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

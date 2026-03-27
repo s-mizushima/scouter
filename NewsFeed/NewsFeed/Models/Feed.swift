@@ -5,11 +5,16 @@ struct Feed: Codable, Identifiable {
     var name: String
     var url: String
     var isEnabled: Bool
+    var language: String?
     let createdAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, url
+        case id, name, url, language
         case isEnabled = "is_enabled"
         case createdAt = "created_at"
+    }
+
+    var needsTranslation: Bool {
+        (language ?? "en") != "ja"
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct ArticleListView: View {
     @StateObject private var viewModel = ArticleListViewModel()
     @State private var showSettings = false
+    @State private var showClips = false
     @State private var selectedArticle: ArticleWithFeed?
     @State private var dragOffset: CGFloat = 0
     @State private var dateId = UUID()
@@ -31,17 +32,14 @@ struct ArticleListView: View {
                                 let velocity = value.predictedEndTranslation.width
 
                                 if value.translation.width > threshold || velocity > 300 {
-                                    // Swipe right → previous day
                                     swipeOut(direction: .right, screenWidth: geo.size.width) {
                                         viewModel.goToPreviousDay()
                                     }
                                 } else if value.translation.width < -threshold || velocity < -300 {
-                                    // Swipe left → next day
                                     swipeOut(direction: .left, screenWidth: geo.size.width) {
                                         viewModel.goToNextDay()
                                     }
                                 } else {
-                                    // Snap back
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                         dragOffset = 0
                                     }
@@ -52,6 +50,14 @@ struct ArticleListView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showClips = true
+                    } label: {
+                        Image(systemName: "bookmark.fill")
+                            .font(.title3)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showSettings = true
@@ -67,9 +73,12 @@ struct ArticleListView: View {
                         Task { await viewModel.loadArticles() }
                     }
             }
+            .sheet(isPresented: $showClips) {
+                ClipListView()
+            }
             .sheet(item: $selectedArticle) { item in
                 NavigationStack {
-                    ArticleWebView(url: URL(string: item.article.articleUrl)!)
+                    ArticleWebView(url: URL(string: item.article.articleUrl)!, needsTranslation: item.needsTranslation)
                         .navigationTitle(item.article.displayTitle)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
@@ -79,8 +88,15 @@ struct ArticleListView: View {
                                 }
                             }
                             ToolbarItem(placement: .topBarTrailing) {
-                                ShareLink(item: URL(string: item.article.articleUrl)!) {
-                                    Image(systemName: "square.and.arrow.up")
+                                HStack(spacing: 16) {
+                                    Button {
+                                        Task { await viewModel.toggleClip(articleId: item.article.id) }
+                                    } label: {
+                                        Image(systemName: viewModel.clippedArticleIds.contains(item.article.id) ? "bookmark.fill" : "bookmark")
+                                    }
+                                    ShareLink(item: URL(string: item.article.articleUrl)!) {
+                                        Image(systemName: "square.and.arrow.up")
+                                    }
                                 }
                             }
                         }
@@ -88,6 +104,7 @@ struct ArticleListView: View {
             }
             .task {
                 await viewModel.loadArticles()
+                await viewModel.loadClipIds()
             }
         }
     }
@@ -100,12 +117,10 @@ struct ArticleListView: View {
         let exitX: CGFloat = direction == .right ? screenWidth : -screenWidth
         let enterX: CGFloat = direction == .right ? -screenWidth : screenWidth
 
-        // 1. Slide current content off screen
         withAnimation(.easeIn(duration: 0.2)) {
             dragOffset = exitX
         }
 
-        // 2. After exit, change date, reposition off-screen on opposite side, then slide in
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             action()
             dateId = UUID()
@@ -192,6 +207,19 @@ struct ArticleListView: View {
         }
     }
 
+    // MARK: - Clip Button
+
+    private func clipButton(for item: ArticleWithFeed) -> some View {
+        Button {
+            Task { await viewModel.toggleClip(articleId: item.article.id) }
+        } label: {
+            Image(systemName: viewModel.clippedArticleIds.contains(item.article.id) ? "bookmark.fill" : "bookmark")
+                .font(.body)
+                .foregroundStyle(viewModel.clippedArticleIds.contains(item.article.id) ? Color.accentColor : .secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Large Card
 
     private func largeArticleCard(_ item: ArticleWithFeed) -> some View {
@@ -237,6 +265,8 @@ struct ArticleListView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                clipButton(for: item)
             }
 
             Text(item.article.displayTitle)
@@ -301,6 +331,8 @@ struct ArticleListView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
+
+                    clipButton(for: item)
                 }
 
                 Text(item.article.displayTitle)
